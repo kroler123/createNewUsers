@@ -28,7 +28,7 @@ pipeline {
 		stage("Чтение файла") {
 			steps {
 				script {
-					sh (script: 'while read line; do ssh -o 'StrictHostKeyChecking no' root@"$line" ip a; done < DB < /dev/null',label: 'Чтение из файла')
+					sh (script: 'while read line; do ssh -o \'StrictHostKeyChecking no\' root@"$line" ip a; done < DB < /dev/null',label: 'Чтение из файла')
 				}
 			}
 		}
