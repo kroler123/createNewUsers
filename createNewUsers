@@ -43,6 +43,7 @@ pipeline {
 							do 
 							echo $line
 							test=`fping "$line"`
+							echo $test
 							if [ "$test" == "is alive" ];then
 							ssh -o \'StrictHostKeyChecking no\'root@"$line" ip a < /dev/null
 							fi
