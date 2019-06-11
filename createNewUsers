@@ -41,8 +41,9 @@ pipeline {
 					sh (script: '''#!/bin/bash
 							while read line 
 							do 
+							echo $line
 							test=`fping "$line"`
-							if [ "$test" = "is alive" ];then
+							if [ "$test" == "is alive" ];then
 							ssh -o \'StrictHostKeyChecking no\'root@"$line" ip a < /dev/null
 							fi
 							done < DB
