@@ -14,7 +14,7 @@ pipeline {
 
 		string(name: 'sName', defaultValue: 'null', description: 'Введите фамилию')
 
-		choice(name: 'ou', choices: ['Admin','User'],description: 'Выберите права')
+		choice(name: 'ou', choices: ['Salon Admins','Salon Users'],description: 'Выберите права')
 
 		booleanParam(name: 'GroupRD',defaultValue: true, description: 'Использовать группу удалённого доступа?')
 
