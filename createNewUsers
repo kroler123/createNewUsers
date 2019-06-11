@@ -30,7 +30,7 @@ pipeline {
 				script {
 					sh (script: '''#!/bin/bash
 							 while read line; do fping "$line" ; done < DB
-							'''',label: 'Чтение из файла')
+							''',label: 'Чтение из файла')
 //					sh (script: 'while read line; do ssh -o \'StrictHostKeyChecking no\' root@"$line" ip a < /dev/null ; done < DB',label: 'Чтение из файла')
 				}
 			}
