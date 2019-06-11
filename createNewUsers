@@ -28,7 +28,7 @@ pipeline {
 		stage("") {
 			steps {
 				script {
-					sh (script: 'while read line; do root@\'$line\' ip a',label: 'Чтение из файла')
+					sh (script: 'while read line; do root@\'$line\' ip a; done < DB',label: 'Чтение из файла')
 				}
 			}
 		}
