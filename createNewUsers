@@ -1,0 +1,42 @@
+!groovy
+// Check properties
+properties([disableConcurrentBuilds()])
+
+pipeline {
+        agent {
+                label 'master'
+        }
+/**        parameters {
+
+		string(name: 'SALON', defaultValue: 'null', description: 'Input number salon')
+
+		string(name: 'SALON', defaultValue: 'null', description: 'Input number salon')
+
+		string(name: 'SALON', defaultValue: 'null', description: 'Input number salon')
+
+		string(name: 'SALON', defaultValue: 'null', description: 'Input number salon')
+				
+	}*/
+        options {
+                buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
+                timestamps()
+                skipStagesAfterUnstable()
+                disableConcurrentBuilds()
+        }
+	stages {
+                stage("Скачиваем базу в файл") {
+                        steps {
+                                script {
+                                        sh (script: 'mysql -h 192.168.102.2 -u kalinkin -p159753 -Bse "SELECT Name,Domain_Controller FROM rbt WHERE virtual = proxmox AND Domain_Controller" -D RBT > DB',label: 'Download DB in the file \"DB\"')
+                                }
+                        }
+                }
+		stage("") {
+			steps {
+				script {
+					sh (script: 'while read line; do root@\'$line\' ip a',label: 'Чтение из файла')
+				}
+			}
+		}
+	}
+}
