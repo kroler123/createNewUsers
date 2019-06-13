@@ -22,6 +22,10 @@ pipeline {
 
 		booleanParam(name: 'GroupAdmin',defaultValue: false, description: 'Использовать группу Администратор?')
 
+		choice(name: 'task', choices: ['create','management'],description: 'Выберите задачу - Create = Создание , Management - Включение или отключение аккаунта ')
+
+		booleanParam(name: 'account',defaultValue: false, description: 'Включить или выключить пользователя')
+
 	}
         options {
                 buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
@@ -38,6 +42,9 @@ pipeline {
                         }
                 }
 		stage("Чтение файла") {
+			when {
+				expression { params.task == "create" }
+			}
 			steps {
 				script {
 					sh (script: '''#!/bin/bash
@@ -57,9 +64,34 @@ pipeline {
 							fi
 							fi
 							done < DB
-							echo "test - $SALON"
-							''',label: 'Чтение из файла')
-//					sh (script: 'while read line; do ssh -o \'StrictHostKeyChecking no\' root@"$line" ip a < /dev/null ; done < DB',label: 'Чтение из файла')
+							''',label: 'Добавляем пользователями')
+				}
+			}
+		}
+		stage("Вкл/выкл аккаунт") {
+			when {
+				expression { params.task == "management" }
+			}
+			steps {
+				script {
+					sh (script: '''#!/bin/bash
+							if [ "$account" == true ];then
+							text='будет включён' 
+							act='enable'
+							else
+							text='будет отключён'
+							act='disable'
+							fi
+							while read line
+							do
+							echo $line
+							test=`fping "$line"`
+							if [ "$test" == "$line is alive" ];then
+							echo "Пользователь $login $text"
+							ssh -o 'StrictHostKeyChecking no' root@"$line" "/usr/local/samba/bin/samba-tool $act $login" < /dev/null
+							fi
+							done < DB
+							''',label: 'Управление пользователями')
 				}
 			}
 		}
