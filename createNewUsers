@@ -45,6 +45,7 @@ pipeline {
 							test=`fping "$line"`
 							echo $test
 							if [ "$test" == "$line is alive" ];then
+								echo "login - $login , OU = $ou , Name = $fName $sName , Group = $GroupRD $GroupAdmin"
 								ssh -o 'StrictHostKeyChecking no' root@"$line" /usr/local/samba/bin/samba-tool user create $login Test1234 --userou="OU=$ou" --given-name=$fName --surname=$sName --script-path=login.bat --must-change-at-next-login < /dev/null
 							if [ "$GroupRD" == true ]; then
 								ssh -o 'StrictHostKeyChecking no' root@"$line" /usr/local/samba/bin/samba-tool group addmembers "Remote Desktop Users" $login	
