@@ -10,11 +10,11 @@ pipeline {
 
 		string(name: 'login', defaultValue: 'null', description: 'Введите логин')
 
-		string(name: 'pass', defaultValue: 'null', description: 'Введите пароль')
+		string(name: 'pass', defaultValue: '', description: 'Введите пароль')
 
-		string(name: 'fName', defaultValue: 'null', description: 'Введите имя')
+		string(name: 'fName', defaultValue: '', description: 'Введите имя')
 
-		string(name: 'sName', defaultValue: 'null', description: 'Введите фамилию')
+		string(name: 'sName', defaultValue: '', description: 'Введите фамилию')
 
 		choice(name: 'ou', choices: ['Salon Admins','Salon Users'],description: 'Выберите права')
 
