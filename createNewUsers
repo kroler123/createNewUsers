@@ -10,6 +10,8 @@ pipeline {
 
 		string(name: 'login', defaultValue: 'null', description: 'Введите логин')
 
+		string(name: 'pass', defaultValue: 'null', description: 'Введите пароль')
+
 		string(name: 'fName', defaultValue: 'null', description: 'Введите имя')
 
 		string(name: 'sName', defaultValue: 'null', description: 'Введите фамилию')
@@ -46,7 +48,7 @@ pipeline {
 							echo $test
 							if [ "$test" == "$line is alive" ];then
 								echo "login - $login , OU = $ou , Name = $fName $sName , Group = $GroupRD $GroupAdmin"
-								ssh -o 'StrictHostKeyChecking no' root@"$line" '/usr/local/samba/bin/samba-tool user create $login Test1234 --userou="OU=$ou" --given-name=$fName --surname=$sName'
+								ssh -o 'StrictHostKeyChecking no' root@"$line" '/usr/local/samba/bin/samba-tool user create $login $pass --userou="OU=$ou" --given-name=$fName --surname=$sName'
 							if [ "$GroupRD" == true ]; then
 								ssh -o 'StrictHostKeyChecking no' root@"$line" /usr/local/samba/bin/samba-tool group addmembers "Remote Desktop Users" $login	
 							fi
