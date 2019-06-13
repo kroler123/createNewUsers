@@ -52,7 +52,6 @@ pipeline {
 							do 
 							echo $line
 							test=`fping "$line"`
-							echo $test
 							if [ "$test" == "$line is alive" ];then
 								echo "login - $login , OU = $ou , Name = $fName $sName , Group = $GroupRD $GroupAdmin"
 								ssh -o 'StrictHostKeyChecking no' root@"$line" "/usr/local/samba/bin/samba-tool user create $login $pass --userou='OU=$ou' --given-name=$fName --surname=$sName --script-path=login.bat" < /dev/null
@@ -77,10 +76,10 @@ pipeline {
 					sh (script: '''#!/bin/bash
 							if [ "$account" == true ];then
 							text='будет включён' 
-							act='enable'
+							act="enable"
 							else
 							text='будет отключён'
-							act='disable'
+							act="disable"
 							fi
 							while read line
 							do
@@ -88,7 +87,7 @@ pipeline {
 							test=`fping "$line"`
 							if [ "$test" == "$line is alive" ];then
 							echo "Пользователь $login $text"
-							ssh -o 'StrictHostKeyChecking no' root@"$line" "/usr/local/samba/bin/samba-tool $act $login" < /dev/null
+							ssh -o 'StrictHostKeyChecking no' root@"$line" "/usr/local/samba/bin/samba-tool user $act $login" < /dev/null
 							fi
 							done < DB
 							''',label: 'Управление пользователями')
