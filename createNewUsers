@@ -48,12 +48,12 @@ pipeline {
 							echo $test
 							if [ "$test" == "$line is alive" ];then
 								echo "login - $login , OU = $ou , Name = $fName $sName , Group = $GroupRD $GroupAdmin"
-								ssh -o 'StrictHostKeyChecking no' root@"$line" "/usr/local/samba/bin/samba-tool user create $login $pass --userou='OU=$ou' --given-name=$fName --surname=$sName"
+								ssh -o 'StrictHostKeyChecking no' root@"$line" "/usr/local/samba/bin/samba-tool user create $login $pass --userou='OU=$ou' --given-name=$fName --surname=$sName --script-path=login.bat" < /dev/null
 							if [ "$GroupRD" == true ]; then
-								ssh -o 'StrictHostKeyChecking no' root@"$line" /usr/local/samba/bin/samba-tool group addmembers "Remote Desktop Users" $login	
+								ssh -o 'StrictHostKeyChecking no' root@"$line" "/usr/local/samba/bin/samba-tool group addmembers 'Remote Desktop Users' $login" < /dev/null	
 							fi
 							if [ "$GroupAdmin" == true ]; then
-								ssh -o 'StrictHostKeyChecking no' root@"$line" /usr/local/samba/bin/samba-tool group addmembers "Domain Admins" $login	
+								ssh -o 'StrictHostKeyChecking no' root@"$line" "/usr/local/samba/bin/samba-tool group addmembers 'Domain Admins' $login" < /dev/null
 							fi
 							fi
 							done < DB
