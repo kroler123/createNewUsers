@@ -3,9 +3,10 @@
 properties([disableConcurrentBuilds()])
 
 pipeline {
-        agent {
-                label 'master'
-        }
+//        agent {
+//                label 'master'
+//        }
+	agent none
         parameters {
 
 		string(name: 'login', defaultValue: 'null', description: 'Введите логин')
@@ -42,6 +43,9 @@ pipeline {
                         }
                 }
 		stage("Чтение файла") {
+			agent {
+				label 'master'
+			}
 			when {
 				expression { params.task == "create" }
 			}
@@ -64,6 +68,18 @@ pipeline {
 							fi
 							done < DB
 							''',label: 'Добавляние пользователя в LinuxDC')
+				}
+			}
+		}
+		stage("Чтение файла") {
+			agent {
+				label 'slave'
+			}
+			when {
+				expression { params.task == "create" }
+			}
+			steps {
+				script {
 					powershell label: 'windows', script: '''# вот тут мы удаляем старые переменные и говорим пошику чтобы он при возникновении ошибор забивал хер не них
 							Remove-Job * -Force
 							$VerbosePreference = "Continue"
@@ -175,6 +191,9 @@ pipeline {
 			}
 		}
 		stage("Вкл/выкл аккаунт") {
+			agent {
+				label 'master'
+			}
 			when {
 				expression { params.task == "management" }
 			}
