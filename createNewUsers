@@ -36,6 +36,9 @@ pipeline {
         }
 	stages {
                 stage("Скачиваем базу в файл") {
+			agent {
+				label 'master'
+			}
                         steps {
                                 script {
                                         sh (script: 'mysql -h 192.168.102.2 -u kalinkin -p159753 -Bse "SELECT Domain_Controller FROM rbt WHERE virtual = \'proxmox\' AND Domain_Controller" -D RBT > DB',label: 'Download DB in the file \"DB\"')
