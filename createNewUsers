@@ -64,8 +64,7 @@ pipeline {
 							fi
 							done < DB
 							''',label: 'Добавляние пользователя в LinuxDC')
-					powershell (script: '''
-							# вот тут мы удаляем старые переменные и говорим пошику чтобы он при возникновении ошибор забивал хер не них
+					powershell label: 'windows', script: '''# вот тут мы удаляем старые переменные и говорим пошику чтобы он при возникновении ошибор забивал хер не них
 							Remove-Job * -Force
 							$VerbosePreference = "Continue"
 							$ArrayDomain = New-Object System.Collections.Hashtable
@@ -171,8 +170,7 @@ pipeline {
 								Write-Host $($j.Name)
 								Write-Host '-------------'
 								receive-job -Name $j.Name
-							}
-							''',label: 'Добавление пользователя в WindowsDC')
+							}'''
 				}
 			}
 		}
