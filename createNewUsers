@@ -35,7 +35,20 @@ pipeline {
                 disableConcurrentBuilds()
         }
 	stages {
-                stage("Скачиваем базу в файл") {
+		stage("Введённые данные") {
+			agent {
+				label 'master'
+			}
+			steps {
+				script {
+					sh (
+						script: 'echo login = $login , password = $pass , firstName = $fName , secondName = $sName',
+						label: 'Информация о пользователе'
+					)
+				}
+			}
+		}
+                stage("Скачиваем базу в файл Linux") {
 			agent {
 				label 'master'
 			}
@@ -45,7 +58,7 @@ pipeline {
                                 }
                         }
                 }
-		stage("Чтение файла") {
+		stage("Создание пользователя в LinuxDC") {
 			agent {
 				label 'master'
 			}
@@ -74,7 +87,7 @@ pipeline {
 				}
 			}
 		}
-		stage("Чтение файла Windows") {
+		stage("Создание пользователя в WindowsDC") {
 			agent {
 				label 'slave'
 			}
@@ -84,112 +97,116 @@ pipeline {
 			steps {
 				script {
 					powershell label: 'windows', script: '''# вот тут мы удаляем старые переменные и говорим пошику чтобы он при возникновении ошибор забивал хер не них
-							Remove-Job * -Force
-							$VerbosePreference = "Continue"
-							$ArrayDomain = New-Object System.Collections.Hashtable
-							[void] $ArrayDomain.Add("kazan.rbt1.ru", "10.20.103.4")
-							#$ArrayDomainLocal = New-Object System.Collections.Hashtable
+					Set-ExecutionPolicy RemoteSigned
+					Add-Type –Path ‘C:\Program Files (x86)\MySQL\MySQL Connector Net 8.0.16\Assemblies\v4.5.2\MySql.Data.dll'
+					$Connection = [MySql.Data.MySqlClient.MySqlConnection]@{ConnectionString='server=192.168.102.2;uid=kalinkin;pwd=159753;database=RBT'}
+					$Connection.Open()
+					$MYSQLCommand = New-Object MySql.Data.MySqlClient.MySqlCommand
+					$MYSQLDataAdapter = New-Object MySql.Data.MySqlClient.MySqlDataAdapter
+					$MYSQLDataSet = New-Object System.Data.DataSet
+					$MYSQLCommand.Connection=$Connection
+					$MYSQLCommand.CommandText='SELECT * from  rbt'
+					$MYSQLDataAdapter.SelectCommand=$MYSQLCommand
+					$NumberOfDataSets=$MYSQLDataAdapter.Fill($MYSQLDataSet, "rbt")
+					foreach($DataSet in $MYSQLDataSet.tables[0])
+					{
+						$out=$DataSet.Domain+" "+$DataSet.Domain_Controller
+						write-output $out >>proc.txt
+					}
+					$Connection.Close()
 
-							$ScriptBlockAD = [scriptblock]::Create({
-							Import-Module activedirectory
-							$AccountName = "$login"
-							$Pass = "$pass"
-							# фамилия
-							$Surname = "sName"   
-							# имя
-							$GivenName = "$fName"
-							$DisplayName = $Surname + " " + $GivenName            
-    
-							# -- 3. Начало добавления пользователя -- 
-    
-							$search1 = "script_bot" #к этому юзерю в группу будет добавляться новый 
-							#Абракадабра со строками для получения папки админов салона куда будем пихать юзеря
-							$UserData = Get-ADUser -identity $search1 -properties *
+					Remove-Job * -Force
+					$VerbosePreference = "Continue"
+					$ArrayDomain = New-Object System.Collections.Hashtable
 
-							$DCName =  $UserData.CanonicalName
-							$p = $DCName.IndexOf("/")
-							$DCName = $DCName.Substring(0,$p)
-							$DCName = $DCName.Insert(0,"@")    
-							$string = $UserData.DistinguishedName
-							$a = $string.IndexOf("OU=") 
-							$b = $string.Length - $a 
-							$TargetPath = $string.Substring($a,$b)
-							#строка добавления нового юзеря
-							$c = $AccountName.Length
-							$UPN = $AccountName.Insert($c,$DCName) 
-              
-							New-ADUser -Name $DisplayName -SAMAccountName $AccountName -GivenName $GivenName -Surname $Surname -DisplayName $DisplayName -CannotChangePassword $false -UserPrincipalName $UPN -Path "$TargetPath"
+					foreach($line in Get-Content .\proc.txt) 
+					{
+						$mySplit = $line -split " "
+						$var1 = $mySplit[0]
+						$var2 = $mySplit[1]
+						[void] $ArrayDomain.Add("$var1", "$var2")
+					}
 
-							#добавляем группы прав юзерю 
-							Add-ADgroupmember "Administrators" -Members $AccountName
-							Add-ADgroupmember "Domain admins" -Members $AccountName
-							Add-ADgroupmember "Remote Desktop Users" -Members $AccountName
-							Add-ADgroupmember "Администраторы" -Members $AccountName
-							Add-ADgroupmember "Администраторы домена" -Members $AccountName
-							Add-ADgroupmember "Пользователи удаленного рабочего стола" -Members $AccountName
-        
-							#устанавливаем пароль юзерю
-							Set-ADAccountPassword $AccountName -NewPassword (ConvertTo-SecureString -AsPlainText -String $Pass -force)       
-
-							#требуем сменить пароль при следующем входе
-							Set-ADUser $AccountName -ChangePasswordAtLogon $true
-
-							#аквтивируем и разблокируем профиль юзеря
-							Unlock-ADAccount $AccountName
-							Enable-ADAccount $AccountName 
-    
-							# -- конец добавления пользователя -- 
-    
-							#проверочка 
-							return Get-ADUser -identity $AccountName  #-properties *
-							})
-							$ArrayDomain = $ArrayDomain.GetEnumerator() | Sort-Object Value -descending
-
-							foreach ($d in $ArrayDomain) 
-							{
-								$UserStartLogin = "script_bot"
-								$pk = "j)we};2^,?3`";fS"
-								$InvokeUser = $d.Name + "\" + $UserStartLogin
-								$UserStartPass = ConvertTo-SecureString -AsPlainText -String $pk -Force
-								#$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, (convertto-securestring $UserStartPass -asplaintext -force));
-								$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, $UserStartPass);
-								Invoke-Command -ComputerName $d.Value -Credential $cred -ScriptBlock $ScriptBlockAD -AsJob -JobName $d.Name | Out-Null
-							}
-							# local admin
-
-							$JobSum = (Get-Job | Measure-Object).Count 
-							$JobOld = @()
-							do {
-								$JobNew = @()
-								$steateJob = Get-Job
-								ForEach  ($j in $steateJob){
-										if($j.state -eq 'Failed'){
-											$JobNew += $j.Name
-											if($JobOld -notcontains $j.Name){
-											Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkYellow
-											}
-										}
-										if($j.state -eq 'Completed'){
-											$JobNew += $j.Name
-											if($JobOld -notcontains $j.Name){
-												Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkGreen
-											}
-										}
+					$loginS = $env:login
+					$passS = $env:pass
+					$fNameS = $env:fName
+					$sNameS = $env:sNameS
+					$ScriptBlockAD = [scriptblock]::Create({
+						Import-Module activedirectory
+						$AccountName = $using:loginS
+						$Pass = $using:passS
+						$Surname =  $using:sNameS   
+						$GivenName = $using:fNameS
+						$DisplayName = $Surname + " " + $GivenName            
+						$search1 = "script_bot" 
+						$UserData = Get-ADUser -identity $search1 -properties *
+						$DCName =  $UserData.CanonicalName
+						$p = $DCName.IndexOf("/")
+						$DCName = $DCName.Substring(0,$p)
+						$DCName = $DCName.Insert(0,"@")    
+						$string = $UserData.DistinguishedName
+						$a = $string.IndexOf("OU=") 
+						$b = $string.Length - $a 
+						$TargetPath = $string.Substring($a,$b)
+						$c = $AccountName.Length
+						$UPN = $AccountName.Insert($c,$DCName) 
+						New-ADUser -Name $DisplayName -SAMAccountName $AccountName -GivenName $GivenName -Surname $Surname -DisplayName $DisplayName -CannotChangePassword $false -UserPrincipalName $UPN -Path "$TargetPath"
+						Add-ADgroupmember "Administrators" -Members $AccountName
+						Add-ADgroupmember "Domain admins" -Members $AccountName
+						Add-ADgroupmember "Remote Desktop Users" -Members $AccountName
+						Add-ADgroupmember "Администраторы" -Members $AccountName
+						Add-ADgroupmember "Администраторы домена" -Members $AccountName
+						Add-ADgroupmember "Пользователи удаленного рабочего стола" -Members $AccountName
+						Set-ADAccountPassword $AccountName -NewPassword (ConvertTo-SecureString -AsPlainText -String $Pass -force)       
+						Set-ADUser $AccountName -ChangePasswordAtLogon $true
+						Unlock-ADAccount $AccountName
+						Enable-ADAccount $AccountName 
+						return Get-ADUser -identity $AccountName  #-properties *
+					})
+					$ArrayDomain = $ArrayDomain.GetEnumerator() | Sort-Object Value -descending
+					foreach ($d in $ArrayDomain) 
+					{
+						$UserStartLogin = "script_bot"
+						$pk = "j)we};2^,?3`";fS"
+						$InvokeUser = $d.Name + "\" + $UserStartLogin
+						$UserStartPass = ConvertTo-SecureString -AsPlainText -String $pk -Force
+						#$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, (convertto-securestring $UserStartPass -asplaintext -force));
+						$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, $UserStartPass);
+						Invoke-Command -ComputerName $d.Value -Credential $cred -ScriptBlock $ScriptBlockAD -AsJob -JobName $d.Name | Out-Null
+					}
+					$JobSum = (Get-Job | Measure-Object).Count 
+					$JobOld = @()
+					do {
+						$JobNew = @()
+						$steateJob = Get-Job
+						foreach  ($j in $steateJob){
+							if($j.state -eq 'Failed'){
+								$JobNew += $j.Name
+								if($JobOld -notcontains $j.Name){
+									Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkYellow
 								}
-								if($JobNew.Length -ne $JobSum){
-									$JobOld = $JobNew
-									Start-Sleep -Milliseconds 500
-								}
-								Write-Progress -Activity "Working..."  -Status "Please wait." -PercentComplete (($JobNew.Length / $JobSum) * 100)
 							}
-							until ($JobNew.Length -eq $JobSum)
-							Write-Progress -Activity "Working..." `   -Completed -Status "All done."
-							foreach($j in $steateJob)
-							{
-								Write-Host $($j.Name)
-								Write-Host '-------------'
-								receive-job -Name $j.Name
-							}'''
+							if($j.state -eq 'Completed'){
+								$JobNew += $j.Name
+								if($JobOld -notcontains $j.Name){
+									Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkGreen
+								}
+							}
+						}
+						if($JobNew.Length -ne $JobSum){
+							$JobOld = $JobNew
+							Start-Sleep -Milliseconds 500
+						}
+						Write-Progress -Activity "Working..."  -Status "Please wait." -PercentComplete (($JobNew.Length / $JobSum) * 100)
+					}
+					until ($JobNew.Length -eq $JobSum)
+					Write-Progress -Activity "Working..." `   -Completed -Status "All done."
+					foreach($j in $steateJob)
+					{
+						Write-Host $($j.Name)
+						Write-Host '-------------'
+						receive-job -Name $j.Name
+					}'''
 				}
 			}
 		}
