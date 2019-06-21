@@ -105,7 +105,7 @@ pipeline {
 					$MYSQLDataAdapter = New-Object MySql.Data.MySqlClient.MySqlDataAdapter
 					$MYSQLDataSet = New-Object System.Data.DataSet
 					$MYSQLCommand.Connection=$Connection
-					$MYSQLCommand.CommandText='SELECT * from  rbt'
+					$MYSQLCommand.CommandText='SELECT * from rbt WHERE virtual = 'esxi' AND Domain_Controller'
 					$MYSQLDataAdapter.SelectCommand=$MYSQLCommand
 					$NumberOfDataSets=$MYSQLDataAdapter.Fill($MYSQLDataSet, "rbt")
 					foreach($DataSet in $MYSQLDataSet.tables[0])
@@ -168,7 +168,7 @@ pipeline {
 					{
 						$UserStartLogin = "script_bot"
 						$pk = "j)we};2^,?3`";fS"
-						$InvokeUser = $d.Name + "\" + $UserStartLogin
+						$InvokeUser = $d.Name + "\\" + $UserStartLogin
 						$UserStartPass = ConvertTo-SecureString -AsPlainText -String $pk -Force
 						#$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, (convertto-securestring $UserStartPass -asplaintext -force));
 						$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, $UserStartPass);
