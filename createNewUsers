@@ -98,7 +98,7 @@ pipeline {
 				script {
 					powershell label: 'windows', script: '''# вот тут мы удаляем старые переменные и говорим пошику чтобы он при возникновении ошибор забивал хер не них
 					Set-ExecutionPolicy RemoteSigned
-					Add-Type –Path ‘C:\\Program Files (x86)\\MySQL\MySQL Connector Net 8.0.16\\Assemblies\\v4.5.2\\MySql.Data.dll'
+					Add-Type –Path ‘C:\\Program Files (x86)\\MySQL\\MySQL Connector Net 8.0.16\\Assemblies\\v4.5.2\\MySql.Data.dll'
 					$Connection = [MySql.Data.MySqlClient.MySqlConnection]@{ConnectionString='server=192.168.102.2;uid=kalinkin;pwd=159753;database=RBT'}
 					$Connection.Open()
 					$MYSQLCommand = New-Object MySql.Data.MySqlClient.MySqlCommand
