@@ -23,6 +23,10 @@ pipeline {
 
 		booleanParam(name: 'GroupAdmin',defaultValue: false, description: 'Использовать группу Администратор?')
 
+		booleanParam(name: 'WindowsAD',defaultValue: true, description: 'Добавить пользователя для Windows домаена?')
+
+		booleanParam(name: 'LinuxAD',defaultValue: true, description: 'Добавить пользователя для Linux домена?')
+
 		choice(name: 'task', choices: ['create','management'],description: 'Выберите задачу - Create = Создание , Management - Включение или отключение аккаунта ')
 
 		booleanParam(name: 'account',defaultValue: false, description: 'Включить или выключить пользователя')
@@ -63,7 +67,10 @@ pipeline {
 				label 'master'
 			}
 			when {
-				expression { params.task == "create" }
+				allOf {
+					expression { params.task == "create" }
+					expression { params.LinuxAD == true }
+				}
 			}
 			steps {
 				script {
@@ -92,12 +99,16 @@ pipeline {
 				label 'slave'
 			}
 			when {
-				expression { params.task == "create" }
+				allOf {
+					expression { params.task == "create" }
+					expression { params.WindowsAD == true }
+				}
 			}
 			steps {
 				script {
-					powershell label: 'windows', script: '''# вот тут мы удаляем старые переменные и говорим пошику чтобы он при возникновении ошибор забивал хер не них
+					powershell label: 'windows', script: '''#
 					Set-ExecutionPolicy RemoteSigned
+					Remove-Item proc.txt
 					Add-Type –Path ‘C:\\Program Files (x86)\\MySQL\\MySQL Connector Net 8.0.16\\Assemblies\\v4.5.2\\MySql.Data.dll'
 					$Connection = [MySql.Data.MySqlClient.MySqlConnection]@{ConnectionString='server=192.168.102.2;uid=kalinkin;pwd=159753;database=RBT'}
 					$Connection.Open()
@@ -145,13 +156,17 @@ pipeline {
 					$loginS = $env:login
 					$passS = $env:pass
 					$fNameS = $env:fName
-					$sNameS = $env:sNameS
+					$sNameS = $env:sName
+					$Remote = $env:GroupRD
+					$Admins = $env:GroupAdmin
 					$ScriptBlockAD = [scriptblock]::Create({
 						Import-Module activedirectory
 						$AccountName = $using:loginS
 						$Pass = $using:passS
 						$Surname =  $using:sNameS   
 						$GivenName = $using:fNameS
+						$RemoteGroup = $using:Remote
+						$AdminGroup = $using:Admins
 						$DisplayName = $Surname + " " + $GivenName            
 						$search1 = "script_bot" 
 						$UserData = Get-ADUser -identity $search1 -properties *
@@ -166,12 +181,16 @@ pipeline {
 						$c = $AccountName.Length
 						$UPN = $AccountName.Insert($c,$DCName) 
 						New-ADUser -Name $DisplayName -SAMAccountName $AccountName -GivenName $GivenName -Surname $Surname -DisplayName $DisplayName -CannotChangePassword $false -UserPrincipalName $UPN -Path "$TargetPath"
+						if ($AdminGroup -eq "true"){
 						Add-ADgroupmember "Administrators" -Members $AccountName
 						Add-ADgroupmember "Domain admins" -Members $AccountName
-						Add-ADgroupmember "Remote Desktop Users" -Members $AccountName
 						Add-ADgroupmember "Администраторы" -Members $AccountName
 						Add-ADgroupmember "Администраторы домена" -Members $AccountName
+						}
+						if ($RemoteGroup -eq "true"){
 						Add-ADgroupmember "Пользователи удаленного рабочего стола" -Members $AccountName
+						Add-ADgroupmember "Remote Desktop Users" -Members $AccountName
+						}
 						Set-ADAccountPassword $AccountName -NewPassword (ConvertTo-SecureString -AsPlainText -String $Pass -force)       
 						Set-ADUser $AccountName -ChangePasswordAtLogon $true
 						Unlock-ADAccount $AccountName
@@ -225,12 +244,15 @@ pipeline {
 				}
 			}
 		}
-		stage("Вкл/выкл аккаунт") {
+		stage("Вкл/выкл аккаунт Linux user") {
 			agent {
 				label 'master'
 			}
 			when {
-				expression { params.task == "management" }
+				allOf {
+					expression { params.task == "management" }
+					expression { params.LinuxAD == true }
+				}
 			}
 			steps {
 				script {
@@ -252,6 +274,122 @@ pipeline {
 							fi
 							done < DB
 							''',label: 'Управление пользователями')
+				}
+			}
+		}
+		stage("Вкл/выкл аккаунт Linux user") {
+			agent {
+				label 'slave'
+			}
+			when {
+				allOf { 
+					expression { params.task == "management" }
+					expression { params.WindowsAD == true }
+				}
+			}
+			steps {
+				script {
+					powershell label: 'windows', script: '''#
+					Set-ExecutionPolicy RemoteSigned
+					Remove-Item proc.txt
+					Add-Type –Path ‘C:\\Program Files (x86)\\MySQL\\MySQL Connector Net 8.0.16\\Assemblies\\v4.5.2\\MySql.Data.dll'
+					$Connection = [MySql.Data.MySqlClient.MySqlConnection]@{ConnectionString='server=192.168.102.2;uid=kalinkin;pwd=159753;database=RBT'}
+					$Connection.Open()
+					$MYSQLCommand = New-Object MySql.Data.MySqlClient.MySqlCommand
+					$MYSQLDataAdapter = New-Object MySql.Data.MySqlClient.MySqlDataAdapter
+					$MYSQLDataSet = New-Object System.Data.DataSet
+					$MYSQLCommand.Connection=$Connection
+					$MYSQLCommand.CommandText='SELECT * from rbt WHERE virtual = esxi AND Domain_Controller'
+					$MYSQLDataAdapter.SelectCommand=$MYSQLCommand
+					$NumberOfDataSets=$MYSQLDataAdapter.Fill($MYSQLDataSet, "rbt")
+					$empty = @()
+					foreach($DataSet in $MYSQLDataSet.tables[0])
+					{
+						$y = false
+						$z = $empty -contains $DataSet.Domain
+						if($z -Like "false") {
+							$y = Test-Connection $DataSet.Domain_Controller -Quiet								
+						}
+						if($z -Like "false" -and $y -like "true") { 
+							$empty += $DataSet.Domain
+							write-host $DataSet.Domain 
+							$out=$DataSet.Domain+" "+$DataSet.Domain_Controller
+							write-output $out >>proc.txt
+						}
+					} 
+					#foreach($DataSet in $MYSQLDataSet.tables[0])
+					#{
+					#	$out=$DataSet.Domain+" "+$DataSet.Domain_Controller
+					#	write-output $out >>proc.txt
+					#}
+					$Connection.Close()
+
+					Remove-Job * -Force
+					$VerbosePreference = "Continue"
+					$ArrayDomain = New-Object System.Collections.Hashtable
+
+					foreach($line in Get-Content .\\proc.txt) 
+					{
+						$mySplit = $line -split " "
+						$var1 = $mySplit[0]
+						$var2 = $mySplit[1]
+						[void] $ArrayDomain.Add("$var1", "$var2")
+					}
+
+					$loginS = $env:login
+					$passS = $env:pass
+					$fNameS = $env:fName
+					$sNameS = $env:sNameS
+					$ScriptBlockAD = [scriptblock]::Create({
+						Import-Module activedirectory
+						$AccountName = $using:loginS
+						Disable-ADAccount -Identity $AccountName						
+						return Get-ADUser -identity $AccountName  #-properties *
+					})
+					$ArrayDomain = $ArrayDomain.GetEnumerator() | Sort-Object Value -descending
+					foreach ($d in $ArrayDomain) 
+					{
+						$UserStartLogin = "script_bot"
+						$pk = "j)we};2^,?3`";fS"
+						$InvokeUser = $d.Name + "\\" + $UserStartLogin
+						$UserStartPass = ConvertTo-SecureString -AsPlainText -String $pk -Force
+						#$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, (convertto-securestring $UserStartPass -asplaintext -force));
+						$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, $UserStartPass);
+						Invoke-Command -ComputerName $d.Value -Credential $cred -ScriptBlock $ScriptBlockAD -AsJob -JobName $d.Name | Out-Null
+					}
+					$JobSum = (Get-Job | Measure-Object).Count 
+					$JobOld = @()
+					do {
+						$JobNew = @()
+						$steateJob = Get-Job
+						foreach  ($j in $steateJob){
+							if($j.state -eq 'Failed'){
+								$JobNew += $j.Name
+								if($JobOld -notcontains $j.Name){
+									Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkYellow
+								}
+							}
+							if($j.state -eq 'Completed'){
+								$JobNew += $j.Name
+								if($JobOld -notcontains $j.Name){
+									Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkGreen
+								}
+							}
+						}
+						if($JobNew.Length -ne $JobSum){
+							$JobOld = $JobNew
+							Start-Sleep -Milliseconds 500
+						}
+						Write-Progress -Activity "Working..."  -Status "Please wait." -PercentComplete (($JobNew.Length / $JobSum) * 100)
+					}
+					until ($JobNew.Length -eq $JobSum)
+					Write-Progress -Activity "Working..." `   -Completed -Status "All done."
+					foreach($j in $steateJob)
+					{
+						Write-Host $($j.Name)
+						Write-Host '-------------'
+						receive-job -Name $j.Name
+					}'''
 				}
 			}
 		}
