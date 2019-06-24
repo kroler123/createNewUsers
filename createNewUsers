@@ -108,11 +108,25 @@ pipeline {
 					$MYSQLCommand.CommandText='SELECT * from rbt WHERE virtual = esxi AND Domain_Controller'
 					$MYSQLDataAdapter.SelectCommand=$MYSQLCommand
 					$NumberOfDataSets=$MYSQLDataAdapter.Fill($MYSQLDataSet, "rbt")
+					$empty = @()
 					foreach($DataSet in $MYSQLDataSet.tables[0])
 					{
-						$out=$DataSet.Domain+" "+$DataSet.Domain_Controller
-						write-output $out >>proc.txt
-					}
+						$y = false
+						$z = $empty -contains $DataSet.Domain
+						if($z -Like "false") {
+							$y = Test-Connection $DataSet.Domain_Controller -Quiet								
+						}
+						if($z -Like "false" -and $y -like "true") { 
+							$empty += $DataSet.Domain
+							write-host $DataSet.Domain 
+							$out=$DataSet.Domain+" "+$DataSet.Domain_Controller
+							write-output $out >>proc.txt
+					} 
+					#foreach($DataSet in $MYSQLDataSet.tables[0])
+					#{
+					#	$out=$DataSet.Domain+" "+$DataSet.Domain_Controller
+					#	write-output $out >>proc.txt
+					#}
 					$Connection.Close()
 
 					Remove-Job * -Force
