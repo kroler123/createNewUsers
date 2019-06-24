@@ -116,7 +116,7 @@ pipeline {
 					$MYSQLDataAdapter = New-Object MySql.Data.MySqlClient.MySqlDataAdapter
 					$MYSQLDataSet = New-Object System.Data.DataSet
 					$MYSQLCommand.Connection=$Connection
-					$MYSQLCommand.CommandText='SELECT * from rbt WHERE virtual = esxi AND Domain_Controller'
+					$MYSQLCommand.CommandText="SELECT * from rbt WHERE virtual = 'esxi' AND Domain_Controller"
 					$MYSQLDataAdapter.SelectCommand=$MYSQLCommand
 					$NumberOfDataSets=$MYSQLDataAdapter.Fill($MYSQLDataSet, "rbt")
 					$empty = @()
@@ -299,7 +299,7 @@ pipeline {
 					$MYSQLDataAdapter = New-Object MySql.Data.MySqlClient.MySqlDataAdapter
 					$MYSQLDataSet = New-Object System.Data.DataSet
 					$MYSQLCommand.Connection=$Connection
-					$MYSQLCommand.CommandText='SELECT * from rbt WHERE virtual = esxi AND Domain_Controller'
+					$MYSQLCommand.CommandText="SELECT * from rbt WHERE virtual = 'esxi' AND Domain_Controller"
 					$MYSQLDataAdapter.SelectCommand=$MYSQLCommand
 					$NumberOfDataSets=$MYSQLDataAdapter.Fill($MYSQLDataSet, "rbt")
 					$empty = @()
