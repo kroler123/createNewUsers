@@ -121,6 +121,7 @@ pipeline {
 							write-host $DataSet.Domain 
 							$out=$DataSet.Domain+" "+$DataSet.Domain_Controller
 							write-output $out >>proc.txt
+						}
 					} 
 					#foreach($DataSet in $MYSQLDataSet.tables[0])
 					#{
