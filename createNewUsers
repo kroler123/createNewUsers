@@ -277,7 +277,7 @@ pipeline {
 				}
 			}
 		}
-		stage("Вкл/выкл аккаунт Linux user") {
+		stage("Вкл/выкл аккаунт Windows user") {
 			agent {
 				label 'slave'
 			}
