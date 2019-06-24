@@ -122,7 +122,7 @@ pipeline {
 					$empty = @()
 					foreach($DataSet in $MYSQLDataSet.tables[0])
 					{
-						$y = false
+						$y = "false"
 						$z = $empty -contains $DataSet.Domain
 						if($z -Like "false") {
 							$y = Test-Connection $DataSet.Domain_Controller -Quiet								
@@ -305,7 +305,7 @@ pipeline {
 					$empty = @()
 					foreach($DataSet in $MYSQLDataSet.tables[0])
 					{
-						$y = false
+						$y = "false"
 						$z = $empty -contains $DataSet.Domain
 						if($z -Like "false") {
 							$y = Test-Connection $DataSet.Domain_Controller -Quiet								
