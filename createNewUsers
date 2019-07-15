@@ -357,39 +357,39 @@ pipeline {
 						$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, $UserStartPass);
 						Invoke-Command -ComputerName $d.Value -Credential $cred -ScriptBlock $ScriptBlockAD -AsJob -JobName $d.Name | Out-Null
 					}
-					$JobSum = (Get-Job | Measure-Object).Count 
-					$JobOld = @()
-					do {
-						$JobNew = @()
-						$steateJob = Get-Job
-						foreach  ($j in $steateJob){
-							if($j.state -eq 'Failed'){
-								$JobNew += $j.Name
-								if($JobOld -notcontains $j.Name){
-									Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkYellow
-								}
-							}
-							if($j.state -eq 'Completed'){
-								$JobNew += $j.Name
-								if($JobOld -notcontains $j.Name){
-									Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkGreen
-								}
-							}
-						}
-						if($JobNew.Length -ne $JobSum){
-							$JobOld = $JobNew
-							Start-Sleep -Milliseconds 500
-						}
-						Write-Progress -Activity "Working..."  -Status "Please wait." -PercentComplete (($JobNew.Length / $JobSum) * 100)
-					}
-					until ($JobNew.Length -eq $JobSum)
-					Write-Progress -Activity "Working..." `   -Completed -Status "All done."
-					foreach($j in $steateJob)
-					{
-						Write-Host $($j.Name)
-						Write-Host '-------------'
-						receive-job -Name $j.Name
-					}'''
+					#$JobSum = (Get-Job | Measure-Object).Count 
+					#$JobOld = @()
+					#do {
+					#	$JobNew = @()
+					#	$steateJob = Get-Job
+					#	foreach  ($j in $steateJob){
+					#		if($j.state -eq 'Failed'){
+					#			$JobNew += $j.Name
+					#			if($JobOld -notcontains $j.Name){
+					#				Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkYellow
+					#			}
+					#		}
+					#		if($j.state -eq 'Completed'){
+					#			$JobNew += $j.Name
+					#			if($JobOld -notcontains $j.Name){
+					#				Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkGreen
+					#			}
+					#		}
+					#	}
+					#	if($JobNew.Length -ne $JobSum){
+					#		$JobOld = $JobNew
+					#		Start-Sleep -Milliseconds 500
+					#	}
+					#	Write-Progress -Activity "Working..."  -Status "Please wait." -PercentComplete (($JobNew.Length / $JobSum) * 100)
+					#}
+					#until ($JobNew.Length -eq $JobSum)
+					#Write-Progress -Activity "Working..." `   -Completed -Status "All done."
+					#foreach($j in $steateJob)
+					#{
+					#	Write-Host $($j.Name)
+					#	Write-Host '-------------'
+					#	receive-job -Name $j.Name
+					#}'''
 				}
 			}
 		}
