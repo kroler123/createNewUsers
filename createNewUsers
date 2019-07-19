@@ -326,29 +326,6 @@ pipeline {
 					}
 					$JobSum = (Get-Job | Measure-Object).Count 
 					$JobOld = @()
-					do {
-						$JobNew = @()
-						$steateJob = Get-Job
-						foreach  ($j in $steateJob){
-							if($j.state -eq 'Failed'){
-								$JobNew += $j.Name
-								if($JobOld -notcontains $j.Name){
-									Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkYellow
-								}
-							}
-							if($j.state -eq 'Completed'){
-								$JobNew += $j.Name
-								if($JobOld -notcontains $j.Name){
-									Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkGreen
-								}
-							}
-						}
-						if($JobNew.Length -ne $JobSum){
-							$JobOld = $JobNew
-							Start-Sleep -Milliseconds 500
-						}
-						Write-Progress -Activity "Working..."  -Status "Please wait." -PercentComplete (($JobNew.Length / $JobSum) * 100)
-					}
 					'''
 				}
 			}
