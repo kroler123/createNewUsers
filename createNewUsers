@@ -27,9 +27,11 @@ pipeline {
 
 		booleanParam(name: 'LinuxAD',defaultValue: true, description: 'Добавить пользователя для Linux домена?')
 
-		choice(name: 'task', choices: ['create','management'],description: 'Выберите задачу - Create = Создание , Management - Включение или отключение аккаунта ')
+		choice(name: 'task', choices: ['create','management','RDP'],description: 'Выберите задачу - Create = Создание , Management - Включение или отключение аккаунта ')
 
 		booleanParam(name: 'account',defaultValue: false, description: 'Включить или выключить пользователя')
+
+		booleanParam(name: 'RDP',defaultValue: false, description: 'Подключение по RDP')
 
 	}
         options {
@@ -241,6 +243,113 @@ pipeline {
 						Write-Host '-------------'
 						receive-job -Name $j.Name
 					}'''
+				}
+			}
+		stage("RDP LinuxDC") {
+			agent {
+				label 'slave'
+			}
+			when {
+				allOf {
+					expression { params.task == "RDP" }
+					expression { params.RDP == true }
+				}
+			}
+			steps {
+				script {
+					powershell label: 'windows', script: '''#
+					Set-ExecutionPolicy RemoteSigned
+					Remove-Item proc.txt
+					Add-Type –Path ‘C:\\Program Files (x86)\\MySQL\\MySQL Connector Net 8.0.16\\Assemblies\\v4.5.2\\MySql.Data.dll'
+					$Connection = [MySql.Data.MySqlClient.MySqlConnection]@{ConnectionString='server=192.168.102.2;uid=kalinkin;pwd=159753;database=RBT'}
+					$Connection.Open()
+					$MYSQLCommand = New-Object MySql.Data.MySqlClient.MySqlCommand
+					$MYSQLDataAdapter = New-Object MySql.Data.MySqlClient.MySqlDataAdapter
+					$MYSQLDataSet = New-Object System.Data.DataSet
+					$MYSQLCommand.Connection=$Connection
+					$MYSQLCommand.CommandText="SELECT * from rbt WHERE virtual = 'proxmox' AND Domain_Controller"
+					$MYSQLDataAdapter.SelectCommand=$MYSQLCommand
+					$NumberOfDataSets=$MYSQLDataAdapter.Fill($MYSQLDataSet, "rbt")
+					$empty = @()
+					foreach($DataSet in $MYSQLDataSet.tables[0])
+					{
+						$y = "false"
+						$z = $empty -contains $DataSet.Domain
+						if($z -Like "false") {
+							$y = Test-Connection $DataSet.Domain_Controller -Quiet								
+						}
+						if($z -Like "false" -and $y -like "true") { 
+							$empty += $DataSet.Domain
+							write-host $DataSet.Domain 
+							$out=$DataSet.Domain+" "+$DataSet.Domain_Controller
+							write-output $out >>proc.txt
+						}
+					} 
+					#foreach($DataSet in $MYSQLDataSet.tables[0])
+					#{
+					#	$out=$DataSet.Domain+" "+$DataSet.Domain_Controller
+					#	write-output $out >>proc.txt
+					#}
+					$Connection.Close()
+
+					Remove-Job * -Force
+					$VerbosePreference = "Continue"
+					$ArrayDomain = New-Object System.Collections.Hashtable
+
+					foreach($line in Get-Content .\\proc.txt) 
+					{
+						$mySplit = $line -split " "
+						$var1 = $mySplit[0]
+						$var2 = $mySplit[1]
+						[void] $ArrayDomain.Add("$var1", "$var2")
+					}
+
+					$loginS = $env:login
+					$RDPS = $env:RDP
+					$ScriptBlockAD = [scriptblock]::Create({
+						Import-Module activedirectory
+						$AccountName = $using:loginS
+						$RDP = $using:RDPS
+						net localgroup "RemoteDesktop Users" $AccountName /add
+						return Get-ADUser -identity $AccountName  #-properties *
+					})
+					$ArrayDomain = $ArrayDomain.GetEnumerator() | Sort-Object Value -descending
+					foreach ($d in $ArrayDomain) 
+					{
+						$UserStartLogin = "script_bot"
+						$pk = "j)we};2^,?3`";fS"
+						$InvokeUser = $d.Name + "\\" + $UserStartLogin
+						$UserStartPass = ConvertTo-SecureString -AsPlainText -String $pk -Force
+						#$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, (convertto-securestring $UserStartPass -asplaintext -force));
+						$cred = (new-object -typename System.Management.Automation.PSCredential -argumentlist $InvokeUser, $UserStartPass);
+						Invoke-Command -ComputerName $d.Value -Credential $cred -ScriptBlock $ScriptBlockAD -AsJob -JobName $d.Name | Out-Null
+					}
+					$JobSum = (Get-Job | Measure-Object).Count 
+					$JobOld = @()
+					do {
+						$JobNew = @()
+						$steateJob = Get-Job
+						foreach  ($j in $steateJob){
+							if($j.state -eq 'Failed'){
+								$JobNew += $j.Name
+								if($JobOld -notcontains $j.Name){
+									Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkYellow
+								}
+							}
+							if($j.state -eq 'Completed'){
+								$JobNew += $j.Name
+								if($JobOld -notcontains $j.Name){
+									Write-Host  $j.Name"`t"$j.state -ForegroundColor DarkGreen
+								}
+							}
+						}
+						if($JobNew.Length -ne $JobSum){
+							$JobOld = $JobNew
+							Start-Sleep -Milliseconds 500
+						}
+						Write-Progress -Activity "Working..."  -Status "Please wait." -PercentComplete (($JobNew.Length / $JobSum) * 100)
+					}
+					'''
 				}
 			}
 		}
